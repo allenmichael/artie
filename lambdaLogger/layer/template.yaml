@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Local Library Lambda Layer
+
+Resources:
+  PetuniaDep:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: petunia-lib
+      Description: Dependencies for sam app
+      ContentUri: ./out.zip
+      CompatibleRuntimes:
+        - nodejs6.10
+        - nodejs8.10
+      LicenseInfo: "Apache-2.0"
+      RetentionPolicy: Retain
+Outputs:
+  PetuniaLayer:
+    Description: "A basic Lambda Layer with local library."
+    Value: !Ref PetuniaDep

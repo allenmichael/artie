@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  service function
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: amsxbg-webhooks
+    Description: A webhooks service
+    Author: amsxbg
+    SpdxLicenseId: Apache-2.0
+    Labels: ["tests"]
+    HomePageUrl: https://github.com/user1/my-app-project
+    SemanticVersion: 0.0.6
+    SourceCodeUrl: https://github.com/user1/my-app-project
+
+Resources:
+  ServiceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: app.lambdaHandler
+      Runtime: nodejs8.10
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref Table
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref Table
+      Events:
+        WebhooksEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt WebhooksQueue.Arn
+            BatchSize: 10
+
+  Table:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: url
+        Type: String
+
+  WebhooksQueue:
+    Type: AWS::SQS::Queue
+
+Outputs:
+  ServiceFunction:
+    Description: "ServiceFunction Lambda Function ARN"
+    Value: !GetAtt ServiceFunction.Arn
+
+  ServiceFunctionName:
+    Description: "ServiceFunction Lambda Function ARN"
+    Value: !Ref ServiceFunction
+
+  ServiceFunctionIamRole:
+    Description: "Implicit IAM Role created for Webhooks function"
+    Value: !GetAtt ServiceFunction.Arn
+
+  WebhooksQueueARN:
+    Description: "Webhooks queue ARN"
+    Value: !GetAtt WebhooksQueue.Arn
+  
+  WebhooksQueueName:
+    Description: "Webhooks queue name"
+    Value: !GetAtt WebhooksQueue.QueueName
+
+  WebhooksQueueUrl:
+    Description: "Webhooks queue URL"
+    Value: !Ref WebhooksQueue
+
+  WebhooksTable:
+    Description: "Implicit IAM Role created for DisneyTokenService function"
+    Value: !Ref Table

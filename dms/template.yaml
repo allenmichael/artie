@@ -1,0 +1,131 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+    S-DMS - Serverless Document Management System
+
+Resources:
+    MetdataAndPermissionsApi:
+        Type: AWS::Serverless::Api
+        Properties:
+            StageName: Prod
+
+    DMSFunctionGetVersions:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: src/versions/get
+            Handler: app.lambdaHandler
+            Runtime: nodejs8.10
+            Policies:
+                - AmazonS3ReadOnlyAccess
+                - DynamoDBReadPolicy:
+                      TableName: !Ref DMSTable
+            Environment:
+                Variables:
+                    TABLE_NAME: !Ref DMSTable
+            Events:
+                DMS:
+                    Type: Api
+                    Properties:
+                        Path: /versions/{documentId}
+                        Method: get
+
+    DMSFunctionGetMetadata:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: src/metadata
+            Handler: app.get
+            Runtime: nodejs8.10
+            Policies:
+                - DynamoDBReadPolicy:
+                      TableName: !Ref DMSTable
+            Environment:
+                Variables:
+                    TABLE_NAME: !Ref DMSTable
+            Events:
+                DMS:
+                    Type: Api
+                    Properties:
+                        RestApiId: !Ref MetdataAndPermissionsApi
+                        Path: /metadata/{documentId}
+                        Method: get
+    DMSFunctionPostMetadata:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: src/metadata
+            Handler: app.post
+            Runtime: nodejs8.10
+            Policies:
+                - DynamoDBCrudPolicy:
+                      TableName: !Ref DMSTable
+            Environment:
+                Variables:
+                    TABLE_NAME: !Ref DMSTable
+            Events:
+                DMS:
+                    Type: Api
+                    Properties:
+                        RestApiId: !Ref MetdataAndPermissionsApi
+                        Path: /metadata/{documentId}
+                        Method: post
+    DMSUploadFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            Handler: app.lambdaHandler
+            Runtime: nodejs8.10
+            CodeUri: src/upload
+            Policies:
+                - DynamoDBCrudPolicy:
+                      TableName: !Ref DMSTable
+            Environment:
+                Variables:
+                    TABLE_NAME: !Ref DMSTable
+            Events:
+                DMSUpload:
+                    Type: S3
+                    Properties:
+                        Bucket: !Ref DMSBucket
+                        Events: s3:ObjectCreated:*
+    DMSTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+            TableName: "DMSTable"
+            AttributeDefinitions:
+                - AttributeName: "documentId"
+                  AttributeType: "S"
+                - AttributeName: "documentInfo"
+                  AttributeType: "S"
+            KeySchema:
+                - AttributeName: "documentId"
+                  KeyType: "HASH"
+                - AttributeName: "documentInfo"
+                  KeyType: "RANGE"
+            ProvisionedThroughput:
+                ReadCapacityUnits: "5"
+                WriteCapacityUnits: "5"
+
+    DMSBucket:
+        Type: AWS::S3::Bucket
+        Properties:
+            VersioningConfiguration:
+                Status: Enabled
+
+Outputs:
+    DMSApi:
+        Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+        Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+
+    MDApi:
+        Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+        Value: !Sub "https://${MetdataAndPermissionsApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+
+    DMSFunctionGetVersions:
+        Description: "Hello World Lambda Function ARN"
+        Value: !GetAtt DMSFunctionGetVersions.Arn
+
+    DMSTable:
+        Description: "DDB Table to track documents"
+        Value: !GetAtt DMSTable.Arn
+
+    DMSBucket:
+        Description: "DMS Bucket for uploads"
+        Value: !Ref DMSBucket

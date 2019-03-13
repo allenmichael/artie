@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+    sam-app
+
+    Sample SAM Template for sam-app
+
+Resources:
+    ServiceApp:
+        Type: AWS::Serverless::Application
+        Properties:
+            Location: 
+              ApplicationId: arn:aws:serverlessrepo:us-west-2:812570870442:applications/amsxbg-webhooks
+              SemanticVersion: 0.0.6
+    UploadFunction:
+        Type: AWS::Serverless::Function 
+        Properties:
+            CodeUri: .
+            Handler: app.lambdaHandler
+            Runtime: nodejs8.10
+            Policies:
+                - SQSSendMessagePolicy:
+                    QueueName: !GetAtt ServiceApp.Outputs.WebhooksQueueName
+            Environment: 
+                Variables:
+                    QUEUE: !GetAtt ServiceApp.Outputs.WebhooksQueueUrl
+            Events:
+                Upload:
+                    Type: S3
+                    Properties:
+                        Bucket: !Ref Bucket
+                        Events: s3:ObjectCreated:*
+    Bucket:
+        Type: AWS::S3::Bucket
+
+Outputs:
+
+    S3Bucket:
+      Description: "S3 Bucket name that will trigger a Lambda function upon new objects insertion"
+      Value: !Ref Bucket
+
+    UploadFunction:
+      Description: "Hello World Lambda Function ARN"
+      Value: !GetAtt UploadFunction.Arn
